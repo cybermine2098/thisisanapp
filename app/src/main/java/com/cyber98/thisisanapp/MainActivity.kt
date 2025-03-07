@@ -56,8 +56,8 @@ fun ClockDisplay(modifier: Modifier = Modifier) {
     }
 
     // Load custom font
-    val customFont = FontFamily(Font(R.font.my_custom_font))
-
+    val customFont = FontFamily(Font(R.font.my_custom_font, FontWeight.Normal))
+    //val customFont = FontFamily.Default
     // Time and date strings
     val timeString = currentTime.value.format(DateTimeFormatter.ofPattern("HH:mm:ss"))
     val dateString = currentTime.value.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
