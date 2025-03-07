@@ -26,7 +26,13 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.font.FontWeight
-
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
+import android.content.Intent
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -59,37 +65,103 @@ fun ClockDisplay(modifier: Modifier = Modifier) {
     val customFont = FontFamily(Font(R.font.my_custom_font, FontWeight.Normal))
     //val customFont = FontFamily.Default
     // Time and date strings
-    val timeString = currentTime.value.format(DateTimeFormatter.ofPattern("HH:mm:ss"))
-    val dateString = currentTime.value.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+    val hour = currentTime.value.format(DateTimeFormatter.ofPattern("HH"))
+    val minute = currentTime.value.format(DateTimeFormatter.ofPattern("mm"))
+    val second = currentTime.value.format(DateTimeFormatter.ofPattern("ss"))
+
+    val displayedMinute = remember { mutableStateOf(minute) }
+    val displayedSecond = remember { mutableStateOf(second) }
+    val displayedHour = remember { mutableStateOf(hour) }
+    val minuteRotation = remember { Animatable(0f) }
+    val secondRotation = remember { Animatable(0f) }
+    val hourRotation = remember { Animatable(0f) }
+    val rotationtime = 150 // Time in milliseconds for rotation
+    LaunchedEffect(minute) {
+        minuteRotation.snapTo(0f)
+        minuteRotation.animateTo(180f, animationSpec = tween(rotationtime))
+        displayedMinute.value = minute
+        minuteRotation.animateTo(360f, animationSpec = tween(rotationtime))
+        minuteRotation.snapTo(0f)
+    }
+    LaunchedEffect(second) {
+        secondRotation.snapTo(0f)
+        secondRotation.animateTo(180f, animationSpec = tween(rotationtime))
+        displayedSecond.value = second
+        secondRotation.animateTo(360f, animationSpec = tween(rotationtime))
+        secondRotation.snapTo(0f)
+    }
+    LaunchedEffect(hour){
+        hourRotation.snapTo(0f)
+        hourRotation.animateTo(180f, animationSpec = tween(rotationtime))
+        displayedHour.value = hour
+        hourRotation.animateTo(360f, animationSpec = tween(rotationtime))
+        hourRotation.snapTo(0f)
+    }
+
+    val context = LocalContext.current
 
     // Layout for centering the clock
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .pointerInput(Unit) {
+                detectHorizontalDragGestures { _, dragAmount ->
+                    // Swiped right launches DateActivity
+                    if (dragAmount < 50f) {
+                        context.startActivity(
+                            Intent(context, DateActivity::class.java)
+                        )
+                    }
+                }
+            }
             .padding(16.dp),
         verticalArrangement = Arrangement.SpaceBetween, // Places date at bottom
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Spacer(modifier = Modifier.weight(1f)) // Pushes time to center
 
-        // Large, centered time display
-        Text(
-            text = timeString,
-            fontFamily = customFont,
-            fontSize = 64.sp, // Adjust as needed
-            modifier = Modifier.align(Alignment.CenterHorizontally),
-            style = TextStyle(letterSpacing = 4.sp) // Optional for spacing
-        )
+        Row {
+            Text(
+                text = hour,
+                fontFamily = customFont,
+                fontSize = 64.sp, // Adjust as needed
+                modifier = Modifier.align(Alignment.CenterVertically),
+                style = TextStyle(letterSpacing = 4.sp) // Optional for spacing
+            )
+            Text(
+                text = ":",
+                fontFamily = customFont,
+                fontSize = 64.sp, // Adjust as needed
+                modifier = Modifier.align(Alignment.CenterVertically),
+                style = TextStyle(letterSpacing = 4.sp) // Optional for spacing
+            )
+            Text(
+                text = displayedMinute.value,
+                fontFamily = customFont,
+                fontSize = 64.sp, // Adjust as needed
+                modifier = Modifier
+                    .align(Alignment.CenterVertically)
+                    .graphicsLayer {
+                        rotationX = minuteRotation.value
+                        alpha = if (minuteRotation.value % 360f in 90f..270f) 0f else 1f
+                    },
+                style = TextStyle(letterSpacing = 4.sp) // Optional for spacing
+            )
+            Text(
+                text = ":"+displayedSecond.value,
+                fontFamily = customFont,
+                fontSize = 64.sp, // Adjust as needed
+                modifier = Modifier
+                    .align(Alignment.CenterVertically)
+                    .graphicsLayer {
+                        rotationX = secondRotation.value
+                        alpha = if (secondRotation.value % 360f in 90f..270f) 0f else 1f
+                    },
+                style = TextStyle(letterSpacing = 4.sp) // Optional for spacing
+            )
+        }
 
         Spacer(modifier = Modifier.weight(1f)) // Pushes date to bottom
-
-        // Small date display at bottom
-        Text(
-            text = dateString,
-            fontFamily = customFont,
-            fontSize = 24.sp, // Adjust as needed
-            modifier = Modifier.align(Alignment.CenterHorizontally)
-        )
     }
 }
 
