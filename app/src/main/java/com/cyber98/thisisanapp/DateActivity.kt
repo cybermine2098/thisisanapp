@@ -33,37 +33,49 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import android.content.Intent
+import androidx.compose.material3.Surface
+import androidx.compose.material3.MaterialTheme
 
 class DateActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()  // Force edge-to-edge and dark mode styling like MainActivity
+        enableEdgeToEdge()  // Ensures edge-to-edge rendering with dark mode values
         setContent {
             ThisIsAnAppTheme {
-                val customFont = FontFamily(Font(R.font.my_custom_font, FontWeight.Normal))
-                val currentDate = remember { LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) }
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .pointerInput(Unit) {
-                            detectHorizontalDragGestures { _, dragAmount ->
-                                // Swiped left
-                                if (dragAmount > -50f) {
-                                    finish()
+                Scaffold(
+                    modifier = Modifier.fillMaxSize(),
+                    containerColor = MaterialTheme.colorScheme.background
+                ) { innerPadding ->
+                    val customFont = FontFamily(Font(R.font.my_custom_font, FontWeight.Normal))
+                    val currentDate = remember { LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) }
+                    val isFinished = remember { mutableStateOf(false) } // new state to flag finish call
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding)
+                            .pointerInput(Unit) {
+                                detectHorizontalDragGestures { _, dragAmount ->
+                                    // Left-to-right swipe: return to time page only once
+                                    if (dragAmount > 50f && !isFinished.value) {
+                                        isFinished.value = true
+                                        finish()
+                                    }
                                 }
                             }
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Row {
+                            Text(
+                                text = currentDate,
+                                fontFamily = customFont,
+                                fontSize = 64.sp,
+                                modifier = Modifier
+                                .align(Alignment.CenterVertically)
+                            )
                         }
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = currentDate,
-                        style = TextStyle(
-                            fontFamily = customFont,
-                            fontSize = 32.sp
-                        )
-                    )
+                    }
                 }
             }
         }

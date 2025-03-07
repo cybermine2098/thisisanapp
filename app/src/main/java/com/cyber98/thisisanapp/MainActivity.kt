@@ -33,6 +33,10 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import android.content.Intent
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.LifecycleOwner
+import androidx.compose.ui.platform.LocalLifecycleOwner
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -99,6 +103,18 @@ fun ClockDisplay(modifier: Modifier = Modifier) {
     }
 
     val context = LocalContext.current
+    val dateLaunched = remember { mutableStateOf(false) } // new state flag
+    val lifecycleOwner: LifecycleOwner = LocalLifecycleOwner.current
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                dateLaunched.value = false
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     // Layout for centering the clock
     Column(
@@ -106,11 +122,10 @@ fun ClockDisplay(modifier: Modifier = Modifier) {
             .fillMaxSize()
             .pointerInput(Unit) {
                 detectHorizontalDragGestures { _, dragAmount ->
-                    // Swiped right launches DateActivity
-                    if (dragAmount < 50f) {
-                        context.startActivity(
-                            Intent(context, DateActivity::class.java)
-                        )
+                    // Right-to-left swipe: launch DateActivity only if not already launched
+                    if (dragAmount < -50f && !dateLaunched.value) {
+                        dateLaunched.value = true
+                        context.startActivity(Intent(context, DateActivity::class.java))
                     }
                 }
             }
@@ -118,8 +133,7 @@ fun ClockDisplay(modifier: Modifier = Modifier) {
         verticalArrangement = Arrangement.SpaceBetween, // Places date at bottom
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(modifier = Modifier.weight(1f)) // Pushes time to center
-
+        Spacer(modifier = Modifier.weight(1.0f)) // Pushes time to center
         Row {
             Text(
                 text = hour,
@@ -160,8 +174,7 @@ fun ClockDisplay(modifier: Modifier = Modifier) {
                 style = TextStyle(letterSpacing = 4.sp) // Optional for spacing
             )
         }
-
-        Spacer(modifier = Modifier.weight(1f)) // Pushes date to bottom
+        Spacer(modifier = Modifier.weight(1.0f)) // Pushes time to center
     }
 }
 
