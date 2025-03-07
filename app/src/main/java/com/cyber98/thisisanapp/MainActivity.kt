@@ -12,6 +12,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.cyber98.thisisanapp.ui.theme.ThisIsAnAppTheme
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -20,8 +26,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             ThisIsAnAppTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
+                    ClockDisplay(
                         modifier = Modifier.padding(innerPadding)
                     )
                 }
@@ -29,19 +34,19 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
-
+@Preview(showBackground = true)
 @Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
+fun ClockDisplay(modifier: Modifier = Modifier) {
+    val currentTime = remember { mutableStateOf(LocalDateTime.now()) }
+    LaunchedEffect(Unit) {
+        while(true) {
+            currentTime.value = LocalDateTime.now()
+            delay(1000)
+        }
+    }
     Text(
-        text = "Hello $name!",
+        text = currentTime.value.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")),
         modifier = modifier
     )
 }
 
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    ThisIsAnAppTheme {
-        Greeting("Android")
-    }
-}
