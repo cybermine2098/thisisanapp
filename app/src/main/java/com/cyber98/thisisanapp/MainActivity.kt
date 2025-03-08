@@ -116,7 +116,7 @@ fun OverviewScreen() {
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "Welcome!",
+                        text = "Welcome, ${userData?.optString("username", "User")}!",
                         style = TextStyle(fontFamily = customFont)
                     )
                     Spacer(modifier = Modifier.height(16.dp))
