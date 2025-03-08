@@ -18,6 +18,10 @@ import com.cyber98.thisisanapp.ui.theme.ThisIsAnAppTheme
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
+import coil.compose.AsyncImage
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -73,28 +77,52 @@ fun OverviewScreen() {
             }
         }
         userData != null -> {
-            Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-                Text("Signed in as:")
-                Spacer(modifier = Modifier.height(16.dp))
-                val keys = userData!!.keys()
-                while (keys.hasNext()) {
-                    val key = keys.next()
-                    if (key == "profileImage") continue  // Skip profileImage
-                    Text(text = "$key: ${userData!!.get(key)}")
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
-                Spacer(modifier = Modifier.weight(1f))
-                // Sign out button
-                Button(
-                    onClick = {
-                        val pref = context.getSharedPreferences("loginCache", Context.MODE_PRIVATE)
-                        pref.edit().clear().apply()
-                        userData = null
-                        errorMessage = "You are not logged in"
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Sign out")
+            // Main screen showing details with profile image in top right.
+            Box(modifier = Modifier.fillMaxSize()) {
+                // Profile image in the top right.
+                val profileImageName = userData!!.optString("profileImage", "")
+                val profileUrl = "https://api.cyber98.dev/profiles/$profileImageName"
+                AsyncImage(
+                    model = profileUrl,
+                    contentDescription = "Profile Image",
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .align(Alignment.TopEnd)
+                        .clickable {
+                            // Launch ProfileActivity with full user details.
+                            val intent = android.content.Intent(context, ProfileActivity::class.java)
+                            intent.putExtra("userData", userData.toString())
+                            context.startActivity(intent)
+                        }
+                )
+                // Details content below.
+                Column(modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp)) {
+                    Spacer(modifier = Modifier.height(56.dp)) // leave room for top bar
+                    Text("Signed in as:")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    val keys = userData!!.keys()
+                    while (keys.hasNext()) {
+                        val key = keys.next()
+                        if (key == "password") continue  // Skip password
+                        Text(text = "$key: ${userData!!.get(key)}")
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                    Spacer(modifier = Modifier.weight(1f))
+                    // Sign out button
+                    Button(
+                        onClick = {
+                            val pref = context.getSharedPreferences("loginCache", Context.MODE_PRIVATE)
+                            pref.edit().clear().apply()
+                            userData = null
+                            errorMessage = "You are not logged in"
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Sign out")
+                    }
                 }
             }
         }

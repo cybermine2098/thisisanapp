@@ -62,8 +62,7 @@ fun LoginScreen() {
                 val result = loginRequest(username, password)
                 if(result?.getBoolean("success") == true){
                     val userData = result.getJSONObject("data")
-                    // Remove profileImage
-                    userData.remove("profileImage")
+                    // Do not remove "profileImage" so it can be used in the main screen.
                     // Save username and password to cache (SharedPreferences)
                     val pref = context.getSharedPreferences("loginCache", Context.MODE_PRIVATE)
                     pref.edit().apply {
