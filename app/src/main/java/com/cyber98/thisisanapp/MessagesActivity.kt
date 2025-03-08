@@ -30,12 +30,14 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController // added import
 import androidx.compose.foundation.lazy.rememberLazyListState
+import android.content.Intent
 
 class MessagesActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Get the sender address from the intent extras:
         val sender = intent.getStringExtra("from") ?: ""
+        // Start the background service
         setContent {
             ThisIsAnAppTheme {
                 Surface {

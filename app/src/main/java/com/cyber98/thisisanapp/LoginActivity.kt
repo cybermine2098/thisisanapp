@@ -28,7 +28,7 @@ class LoginActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             ThisIsAnAppTheme {
-                Scaffold { innerPadding ->
+                Scaffold { innerPadding -> 
                     Box(modifier = Modifier.padding(innerPadding)) {
                         LoginScreen()
                     }
@@ -71,6 +71,11 @@ fun LoginScreen() {
             Spacer(modifier = Modifier.height(16.dp))
             Button(onClick = {
                 scope.launch {
+                    // Check network connectivity first.
+                    if (!NetworkUtils.isNetworkAvailable(context)) {
+                        message = "No network connection available."
+                        return@launch
+                    }
                     val result = loginRequest(username, password)
                     if(result?.getBoolean("success") == true){
                         val userData = result.getJSONObject("data")

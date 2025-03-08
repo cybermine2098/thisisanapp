@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    id("com.google.gms.google-services") // add this for Firebase
 }
 
 android {
@@ -37,6 +38,10 @@ android {
     buildFeatures {
         compose = true
     }
+    // Added compose options block to ensure correct Kotlin compiler extension version is used.
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.4.3" // update as needed
+    }
 }
 
 dependencies {
@@ -44,23 +49,25 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
-
-    // Add missing Compose dependencies
-    implementation(libs.androidx.ui)
-    implementation(libs.androidx.ui.graphics)
-    implementation(libs.androidx.ui.tooling.preview)
+    implementation(platform("com.google.firebase:firebase-bom:33.10.0"))
+    implementation("com.google.firebase:firebase-analytics")
+    // Replaced unresolved alias for Compose UI dependencies with explicit coordinates.
+    implementation("androidx.compose.ui:ui:1.5.1")
+    implementation("androidx.compose.ui:ui-graphics:1.5.1")
+    implementation("androidx.compose.ui:ui-tooling-preview:1.5.1")
     implementation(libs.androidx.material3)
 
-    // **Add this for text styling (Fix FontWeight issue)**
     implementation("androidx.compose.ui:ui-text:1.5.1")
     implementation("io.coil-kt:coil-compose:2.3.0")
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.6.0") // added
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.6.0")
+    implementation("com.google.firebase:firebase-messaging:24.1.0")
+    implementation("com.android.volley:volley:1.2.1") // <-- added Volley dependency
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
-    androidTestImplementation(libs.androidx.ui.test.junit4)
-    debugImplementation(libs.androidx.ui.tooling)
-    debugImplementation(libs.androidx.ui.test.manifest)
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4:1.5.1")
+    debugImplementation("androidx.compose.ui:ui-tooling:1.5.1")
+    debugImplementation("androidx.compose.ui:ui-test-manifest:1.5.1")
 }

@@ -16,9 +16,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
 import org.json.JSONObject
 import com.cyber98.thisisanapp.ui.theme.ThisIsAnAppTheme
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.mutableStateOf
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import coil.compose.AsyncImage
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.CircleShape
@@ -26,28 +28,30 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.rememberScrollState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.OutputStreamWriter
 import java.io.InputStreamReader
 import java.net.URL
 import javax.net.ssl.HttpsURLConnection
+import android.util.Log
+import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.launch
-import androidx.compose.foundation.background
-import kotlinx.coroutines.delay
+import androidx.lifecycle.lifecycleScope
+import com.android.volley.Request
+import com.android.volley.toolbox.JsonObjectRequest
+import com.android.volley.toolbox.Volley
+import android.content.pm.PackageManager
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import android.os.Build
+import android.Manifest
 
 data class Conversation(val from: String, val to: String, val content: String, val preview: String)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+        super.onCreate(savedInstanceState)  // <-- Ensure super.onCreate is called
         enableEdgeToEdge()
         setContent {
             ThisIsAnAppTheme {
@@ -56,6 +60,68 @@ class MainActivity : ComponentActivity() {
                         OverviewScreen()
                     }
                 }
+            }
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val permPref = this.getSharedPreferences("notificationPrefs", Context.MODE_PRIVATE)
+            val alreadyRequested = permPref.getBoolean("notificationRequested", false)
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED && !alreadyRequested) {
+                ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 101)
+                permPref.edit().putBoolean("notificationRequested", true).apply()
+            }
+        }
+        FirebaseMessaging.getInstance().token
+            .addOnCompleteListener { task ->
+                if (!task.isSuccessful) {
+                    Log.w("FCM", "Fetching FCM token failed", task.exception)
+                    return@addOnCompleteListener
+                }
+
+                // Get the new FCM token
+                val token = task.result
+                Log.d("FCM Token", token ?: "No Token")
+
+                // Send token to your server
+                sendTokenToServer(token)
+            }
+        // New: Fetch device info from API on app load and save it.
+        lifecycleScope.launch {
+            fetchDeviceInfo()
+        }
+    }
+
+    // Moved inside MainActivity and updated getSharedPreferences call.
+    private fun sendTokenToServer(token: String?) {
+        if (token == null) return
+        val sharedPref = this.getSharedPreferences("loginCache", Context.MODE_PRIVATE)
+        val username = sharedPref.getString("username", null) ?: "anonymous"
+        val password = sharedPref.getString("password", null) ?: "anonymous"  // added password retrieval
+        val url = "https://api.cyber98.dev/fcm"  // updated endpoint
+        val jsonObject = JSONObject().apply {
+            put("username", username)
+            put("password", password)
+            put("fcmToken", token)
+        }
+        val request = JsonObjectRequest(Request.Method.POST, url, jsonObject,
+            { response -> Log.d("FCM", "FCM info sent successfully: $response") },
+            { error -> Log.e("FCM", "Error sending FCM info", error) })
+        Volley.newRequestQueue(this).add(request)
+    }
+
+    private suspend fun fetchDeviceInfo() {
+        return withContext(Dispatchers.IO) {
+            try {
+                val pref = this@MainActivity.getSharedPreferences("loginCache", Context.MODE_PRIVATE)
+                val url = URL("https://api.cyber98.dev/device")
+                val conn = url.openConnection() as HttpsURLConnection
+                conn.requestMethod = "GET"
+                val response = InputStreamReader(conn.inputStream, "UTF-8").readText()
+                conn.disconnect()
+                pref.edit().putString("deviceInfo", response).apply()
+                Log.d("DeviceInfo", "Device info saved: $response")
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }
@@ -127,13 +193,7 @@ fun OverviewScreen() {
         loading = false
     }
     
-    // Auto refresh conversations every 5 seconds:
-    LaunchedEffect(Unit) {
-        while(true) {
-            delay(5000L)
-            refreshTrigger++
-        }
-    }
+    // Removed automatic background refresh every 5 seconds.
     
     when {
         loading -> {
@@ -206,7 +266,6 @@ fun OverviewScreen() {
                                         context.startActivity(intent)
                                     }
                                 ) {
-                                    // Updated Row with fillMaxWidth and horizontalArrangement.Start.
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         verticalAlignment = Alignment.CenterVertically,
@@ -303,4 +362,3 @@ fun PreviewOverview() {
         OverviewScreen()
     }
 }
-
