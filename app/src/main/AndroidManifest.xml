@@ -24,6 +24,8 @@
         </activity>
         <activity android:name=".LoginActivity"/>
         <activity android:name=".ProfileActivity"/>
+        <activity android:name=".MessagesActivity"></activity>
+        <activity android:name=".ConversationActivity"/>  <!-- New activity registered -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_icon"
             android:resource="@drawable/ic_notification"/>

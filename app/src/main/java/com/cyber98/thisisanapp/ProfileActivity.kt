@@ -1,6 +1,7 @@
 package com.cyber98.thisisanapp
 
 import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -72,39 +73,64 @@ fun ProfileScreen(initialData: JSONObject) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Top
     ) {
-        AsyncImage(
-            model = "https://api.cyber98.dev/profiles/${initialData.optString("profileImage", "default.jpg")}",
-            contentDescription = "Profile Image",
-            modifier = Modifier
-                .fillMaxWidth()           // image fills width
-                .aspectRatio(1f)          // maintains a square aspect ratio
-                .clip(MaterialTheme.shapes.medium)
-        )
-        Text(text = "Please log in to the web portal to change your profile image.",style = MaterialTheme.typography.headlineSmall.copy(fontFamily = customFont))
-        Spacer(modifier = Modifier.height(16.dp))
+        // New top row with profile image and button
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            AsyncImage(
+                model = "https://api.cyber98.dev/profiles/${initialData.optString("profileImage", "default.jpg")}",
+                contentDescription = "Profile Image",
+                modifier = Modifier
+                    .clip(MaterialTheme.shapes.medium)
+                    .fillMaxWidth()
+                    .size(128.dp)
+            )
+        }
         Text(
-            text = initialData.optString("username", "Unknown User"),
+            text = "Please log in to the web portal to change your profile image.",
+            style = TextStyle(fontFamily = customFont)
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        // Extract specific fields
+        val username = initialData.optString("username", "Unknown User")
+        val fullname = initialData.optString("fullname", "")
+        val bio = initialData.optString("bio", "")
+        
+        // Username (already implemented)
+        Text(
+            text = username,
             style = MaterialTheme.typography.headlineSmall.copy(fontFamily = customFont)
         )
-        Spacer(modifier = Modifier.height(16.dp))
-        if (loading) {
-            CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
-        }
-        if (errorMessage != null) {
+        // Fullname: normal text size, centered
+        if(fullname.isNotEmpty()){
             Text(
-                text = errorMessage ?: "",
-                style = TextStyle(fontFamily = customFont)
+                text = fullname,
+                style = MaterialTheme.typography.bodyLarge.copy(fontFamily = customFont),
+                modifier = Modifier.align(Alignment.CenterHorizontally)
             )
-        } else {
-            // Display all fields except 'password'
-            userData.keys().forEach { key ->
-                if (key != "password") {
-                    val value = userData.get(key)
-                    Text(text = "$key: $value", style = TextStyle(fontFamily = customFont))
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
-            }
         }
+        Spacer(modifier = Modifier.height(16.dp))
+        // Label for bio, centered
+        Text(
+            text = "Bio:",
+            style = MaterialTheme.typography.headlineSmall.copy(fontFamily = customFont),
+            modifier = Modifier.align(Alignment.CenterHorizontally)
+        )
+        // Bio text, justified
+        Text(
+            text = bio,
+            style = MaterialTheme.typography.bodyMedium.copy(fontFamily = customFont),
+            textAlign = androidx.compose.ui.text.style.TextAlign.Justify
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        // Display email (username + "@cyber98.dev")
+        Text(
+            text = "$username@cyber98.dev",
+            style = MaterialTheme.typography.bodyMedium.copy(fontFamily = customFont),
+            modifier = Modifier.align(Alignment.CenterHorizontally)
+        )
         Spacer(modifier = Modifier.weight(1f))
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -113,7 +139,12 @@ fun ProfileScreen(initialData: JSONObject) {
             Button(onClick = {
                 val pref = context.getSharedPreferences("loginCache", Context.MODE_PRIVATE)
                 pref.edit().clear().apply()
-                (context as? ComponentActivity)?.finish()
+                // Relaunch MainActivity to refresh home screen after sign out.
+                context.startActivity(
+                    Intent(context, MainActivity::class.java).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    }
+                )
             }) {
                 Text(text = "Sign out", style = TextStyle(fontFamily = customFont))
             }
