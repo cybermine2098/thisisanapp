@@ -44,7 +44,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             ThisIsAnAppTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding -> 
                     ClockDisplay(
                         modifier = Modifier.padding(innerPadding)
                     )
@@ -79,37 +79,39 @@ fun ClockDisplay(modifier: Modifier = Modifier) {
     val minuteRotation = remember { Animatable(0f) }
     val secondRotation = remember { Animatable(0f) }
     val hourRotation = remember { Animatable(0f) }
-    val rotationtime = 150 // Time in milliseconds for rotation
+    val rotationTime = 150 // Time in milliseconds for rotation
     LaunchedEffect(minute) {
         minuteRotation.snapTo(0f)
-        minuteRotation.animateTo(180f, animationSpec = tween(rotationtime))
+        minuteRotation.animateTo(180f, animationSpec = tween(rotationTime))
         displayedMinute.value = minute
-        minuteRotation.animateTo(360f, animationSpec = tween(rotationtime))
+        minuteRotation.animateTo(360f, animationSpec = tween(rotationTime))
         minuteRotation.snapTo(0f)
     }
     LaunchedEffect(second) {
         secondRotation.snapTo(0f)
-        secondRotation.animateTo(180f, animationSpec = tween(rotationtime))
+        secondRotation.animateTo(180f, animationSpec = tween(rotationTime))
         displayedSecond.value = second
-        secondRotation.animateTo(360f, animationSpec = tween(rotationtime))
+        secondRotation.animateTo(360f, animationSpec = tween(rotationTime))
         secondRotation.snapTo(0f)
     }
     LaunchedEffect(hour){
         hourRotation.snapTo(0f)
-        hourRotation.animateTo(180f, animationSpec = tween(rotationtime))
+        hourRotation.animateTo(180f, animationSpec = tween(rotationTime))
         displayedHour.value = hour
-        hourRotation.animateTo(360f, animationSpec = tween(rotationtime))
+        hourRotation.animateTo(360f, animationSpec = tween(rotationTime))
         hourRotation.snapTo(0f)
     }
 
     val context = LocalContext.current
-    val dateLaunched = remember { mutableStateOf(false) } // new state flag
+    val dateLaunched = remember { mutableStateOf(false) } // existing flag for DateActivity
+    val loginLaunched = remember { mutableStateOf(false) }  // new flag for LoginActivity
     val lifecycleOwner: LifecycleOwner = LocalLifecycleOwner.current
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 dateLaunched.value = false
+                loginLaunched.value = false
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -122,10 +124,15 @@ fun ClockDisplay(modifier: Modifier = Modifier) {
             .fillMaxSize()
             .pointerInput(Unit) {
                 detectHorizontalDragGestures { _, dragAmount ->
-                    // Right-to-left swipe: launch DateActivity only if not already launched
+                    // Swipe left: launch DateActivity
                     if (dragAmount < -50f && !dateLaunched.value) {
                         dateLaunched.value = true
                         context.startActivity(Intent(context, DateActivity::class.java))
+                    }
+                    // Swipe right: launch LoginActivity
+                    else if (dragAmount > 50f && !loginLaunched.value) {
+                        loginLaunched.value = true
+                        context.startActivity(Intent(context, LoginActivity::class.java))
                     }
                 }
             }
