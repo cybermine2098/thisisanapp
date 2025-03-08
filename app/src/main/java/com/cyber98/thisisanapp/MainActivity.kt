@@ -22,6 +22,12 @@ import coil.compose.AsyncImage
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -42,11 +48,23 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun OverviewScreen() {
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val customFont = FontFamily(Font(R.font.my_custom_font))
     var userData by remember { mutableStateOf<JSONObject?>(null) }
     var loading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
-    var refreshTrigger by remember { mutableStateOf(0) } // new refresh trigger
-
+    var refreshTrigger by remember { mutableStateOf(0) }
+    
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                refreshTrigger++
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    
     LaunchedEffect(refreshTrigger) {
         val pref = context.getSharedPreferences("loginCache", Context.MODE_PRIVATE)
         val username = pref.getString("username", null)
@@ -55,7 +73,6 @@ fun OverviewScreen() {
             loading = false
             return@LaunchedEffect
         }
-        // Contact the api on launch to verify credentials
         val result = loginRequest(username, password)
         if (result == null) {
             errorMessage = "you are offline"
@@ -63,13 +80,12 @@ fun OverviewScreen() {
             userData = result.getJSONObject("data")
             errorMessage = null
         } else {
-            // Clear invalid credentials
             pref.edit().clear().apply()
             errorMessage = result.getString("message") ?: "Login failed"
         }
         loading = false
     }
-
+    
     when {
         loading -> {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -77,81 +93,62 @@ fun OverviewScreen() {
             }
         }
         userData != null -> {
-            // Main screen showing details with profile image in top right.
+            // Logged in state: use the outer context for clickable calls.
             Box(modifier = Modifier.fillMaxSize()) {
-                // Profile image in the top right.
-                val profileImageName = userData!!.optString("profileImage", "")
-                val profileUrl = "https://api.cyber98.dev/profiles/$profileImageName"
                 AsyncImage(
-                    model = profileUrl,
+                    model = "https://api.cyber98.dev/profiles/${userData!!.optString("profileImage", "")}",
                     contentDescription = "Profile Image",
                     modifier = Modifier
                         .size(48.dp)
                         .clip(CircleShape)
                         .align(Alignment.TopEnd)
                         .clickable {
-                            // Launch ProfileActivity with full user details.
                             val intent = android.content.Intent(context, ProfileActivity::class.java)
                             intent.putExtra("userData", userData.toString())
                             context.startActivity(intent)
                         }
                 )
-                // Details content below.
-                Column(modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp)) {
-                    Spacer(modifier = Modifier.height(56.dp)) // leave room for top bar
-                    Text("Signed in as:")
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Welcome!",
+                        style = TextStyle(fontFamily = customFont)
+                    )
                     Spacer(modifier = Modifier.height(16.dp))
-                    val keys = userData!!.keys()
-                    while (keys.hasNext()) {
-                        val key = keys.next()
-                        if (key == "password") continue  // Skip password
-                        Text(text = "$key: ${userData!!.get(key)}")
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
-                    Spacer(modifier = Modifier.weight(1f))
-                    // Sign out button
-                    Button(
-                        onClick = {
-                            val pref = context.getSharedPreferences("loginCache", Context.MODE_PRIVATE)
-                            pref.edit().clear().apply()
-                            userData = null
-                            errorMessage = "You are not logged in"
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Sign out")
+                    Button(onClick = {
+                        val pref = context.getSharedPreferences("loginCache", Context.MODE_PRIVATE)
+                        pref.edit().clear().apply()
+                        userData = null
+                    }) {
+                        Text("Sign Out", style = TextStyle(fontFamily = customFont))
                     }
                 }
             }
         }
         else -> {
-            // Not logged in: show sign in and refresh buttons.
+            // Not logged in state: no profile icon, remove refresh button and use a long Log in button at the bottom.
             Column(
-                modifier = Modifier.fillMaxSize().padding(16.dp),
-                verticalArrangement = Arrangement.Center,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.SpaceBetween,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(errorMessage ?: "You are not logged in")
-                Spacer(modifier = Modifier.height(16.dp))
-                Row {
-                    Button(
-                        onClick = {
-                            context.startActivity(android.content.Intent(context, LoginActivity::class.java))
-                        }
-                    ) {
-                        Text("Sign in")
+                Text(errorMessage ?: "You are not logged in", style = TextStyle(fontFamily = customFont))
+                Button(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = {
+                        context.startActivity(
+                            android.content.Intent(context, LoginActivity::class.java)
+                        )
                     }
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Button(
-                        onClick = {
-                            loading = true
-                            refreshTrigger++  // trigger refresh
-                        }
-                    ) {
-                        Text("Refresh")
-                    }
+                ) {
+                    Text("Log in", style = TextStyle(fontFamily = customFont))
                 }
             }
         }

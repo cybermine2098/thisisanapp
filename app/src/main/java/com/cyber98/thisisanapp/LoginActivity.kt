@@ -1,6 +1,5 @@
 package com.cyber98.thisisanapp
 
-import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -21,12 +20,20 @@ import javax.net.ssl.HttpsURLConnection
 import kotlinx.coroutines.launch
 import android.content.Context
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.platform.LocalConfiguration  // added import
+import com.cyber98.thisisanapp.ui.theme.ThisIsAnAppTheme
 
 class LoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            LoginScreen()
+            ThisIsAnAppTheme {
+                Scaffold { innerPadding ->
+                    Box(modifier = Modifier.padding(innerPadding)) {
+                        LoginScreen()
+                    }
+                }
+            }
         }
     }
 }
@@ -38,49 +45,55 @@ fun LoginScreen() {
     var message by remember { mutableStateOf("") }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()  // Added coroutine scope
+    val configuration = LocalConfiguration.current                         // new
+    val screenHeight = configuration.screenHeightDp.dp                      // new
 
-    Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ){
-        OutlinedTextField(
-            value = username,
-            onValueChange = { username = it },
-            label = { Text("Username") }
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        OutlinedTextField(
-            value = password,
-            onValueChange = { password = it },
-            label = { Text("Password") },
-            visualTransformation = PasswordVisualTransformation() // Hides password characters
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        Button(onClick = {
-            scope.launch {
-                val result = loginRequest(username, password)
-                if(result?.getBoolean("success") == true){
-                    val userData = result.getJSONObject("data")
-                    // Do not remove "profileImage" so it can be used in the main screen.
-                    // Save username and password to cache (SharedPreferences)
-                    val pref = context.getSharedPreferences("loginCache", Context.MODE_PRIVATE)
-                    pref.edit().apply {
-                        putString("username", username)
-                        putString("password", password)
-                        apply()
+    Box(modifier = Modifier.fillMaxSize()) {                               // new container
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopCenter)                               // align to top center
+                .padding(top = screenHeight * 0.25f)                      // form starts at top 1/4 of the screen
+                .padding(horizontal = 16.dp),                             // retain existing horizontal padding
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            OutlinedTextField(
+                value = username,
+                onValueChange = { username = it },
+                label = { Text("Username") }
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedTextField(
+                value = password,
+                onValueChange = { password = it },
+                label = { Text("Password") },
+                visualTransformation = PasswordVisualTransformation() // Hides password characters
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(onClick = {
+                scope.launch {
+                    val result = loginRequest(username, password)
+                    if(result?.getBoolean("success") == true){
+                        val userData = result.getJSONObject("data")
+                        // Do not remove "profileImage" so it can be used in the main screen.
+                        // Save username and password to cache (SharedPreferences)
+                        val pref = context.getSharedPreferences("loginCache", Context.MODE_PRIVATE)
+                        pref.edit().apply {
+                            putString("username", username)
+                            putString("password", password)
+                            apply()
+                        }
+                        // Instead of launching a new activity, finish LoginActivity to return to MainActivity.
+                        (context as? ComponentActivity)?.finish()
+                    } else {
+                        message = result?.getString("message") ?: "Login failed"
                     }
-                    // Instead of launching a new activity, finish LoginActivity to return to MainActivity.
-                    (context as? ComponentActivity)?.finish()
-                } else {
-                    message = result?.getString("message") ?: "Login failed"
                 }
+            }) {
+                Text("Login")
             }
-        }) {
-            Text("Login")
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(text = message)
         }
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(text = message)
     }
 }
 

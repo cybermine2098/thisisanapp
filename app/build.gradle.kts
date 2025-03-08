@@ -54,6 +54,7 @@ dependencies {
     // **Add this for text styling (Fix FontWeight issue)**
     implementation("androidx.compose.ui:ui-text:1.5.1")
     implementation("io.coil-kt:coil-compose:2.3.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.6.0") // added
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
