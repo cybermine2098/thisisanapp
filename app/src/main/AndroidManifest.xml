@@ -22,10 +22,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".DateActivity"/>
-        <activity android:name=".LoginActivity"/>
-        <activity android:name=".UserActivity"/>
-        
+        <activity android:name=".LoginActivity"/>        
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_icon"
             android:resource="@drawable/ic_notification"/>

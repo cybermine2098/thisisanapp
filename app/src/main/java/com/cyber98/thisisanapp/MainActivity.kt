@@ -1,42 +1,23 @@
 package com.cyber98.thisisanapp
 
 import android.os.Bundle
+import android.content.Context
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
+import org.json.JSONObject
 import com.cyber98.thisisanapp.ui.theme.ThisIsAnAppTheme
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
-import kotlinx.coroutines.delay
-import androidx.compose.foundation.layout.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.Font
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
-import android.content.Intent
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.LifecycleOwner
-import androidx.compose.ui.platform.LocalLifecycleOwner
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -44,144 +25,116 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             ThisIsAnAppTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding -> 
-                    ClockDisplay(
-                        modifier = Modifier.padding(innerPadding)
-                    )
+                Scaffold { innerPadding -> 
+                    Box(modifier = Modifier.padding(innerPadding)) {
+                        OverviewScreen()
+                    }
                 }
             }
         }
     }
 }
-@Preview(showBackground = true)
+
 @Composable
-fun ClockDisplay(modifier: Modifier = Modifier) {
-    val currentTime = remember { mutableStateOf(LocalDateTime.now()) }
-
-    LaunchedEffect(Unit) {
-        while (true) {
-            currentTime.value = LocalDateTime.now()
-            delay(1000) // Update every second
-        }
-    }
-
-    // Load custom font
-    val customFont = FontFamily(Font(R.font.my_custom_font, FontWeight.Normal))
-    //val customFont = FontFamily.Default
-    // Time and date strings
-    val hour = currentTime.value.format(DateTimeFormatter.ofPattern("HH"))
-    val minute = currentTime.value.format(DateTimeFormatter.ofPattern("mm"))
-    val second = currentTime.value.format(DateTimeFormatter.ofPattern("ss"))
-
-    val displayedMinute = remember { mutableStateOf(minute) }
-    val displayedSecond = remember { mutableStateOf(second) }
-    val displayedHour = remember { mutableStateOf(hour) }
-    val minuteRotation = remember { Animatable(0f) }
-    val secondRotation = remember { Animatable(0f) }
-    val hourRotation = remember { Animatable(0f) }
-    val rotationTime = 150 // Time in milliseconds for rotation
-    LaunchedEffect(minute) {
-        minuteRotation.snapTo(0f)
-        minuteRotation.animateTo(180f, animationSpec = tween(rotationTime))
-        displayedMinute.value = minute
-        minuteRotation.animateTo(360f, animationSpec = tween(rotationTime))
-        minuteRotation.snapTo(0f)
-    }
-    LaunchedEffect(second) {
-        secondRotation.snapTo(0f)
-        secondRotation.animateTo(180f, animationSpec = tween(rotationTime))
-        displayedSecond.value = second
-        secondRotation.animateTo(360f, animationSpec = tween(rotationTime))
-        secondRotation.snapTo(0f)
-    }
-    LaunchedEffect(hour){
-        hourRotation.snapTo(0f)
-        hourRotation.animateTo(180f, animationSpec = tween(rotationTime))
-        displayedHour.value = hour
-        hourRotation.animateTo(360f, animationSpec = tween(rotationTime))
-        hourRotation.snapTo(0f)
-    }
-
+fun OverviewScreen() {
     val context = LocalContext.current
-    val dateLaunched = remember { mutableStateOf(false) } // existing flag for DateActivity
-    val loginLaunched = remember { mutableStateOf(false) }  // new flag for LoginActivity
-    val lifecycleOwner: LifecycleOwner = LocalLifecycleOwner.current
+    var userData by remember { mutableStateOf<JSONObject?>(null) }
+    var loading by remember { mutableStateOf(true) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var refreshTrigger by remember { mutableStateOf(0) } // new refresh trigger
 
-    DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                dateLaunched.value = false
-                loginLaunched.value = false
+    LaunchedEffect(refreshTrigger) {
+        val pref = context.getSharedPreferences("loginCache", Context.MODE_PRIVATE)
+        val username = pref.getString("username", null)
+        val password = pref.getString("password", null)
+        if (username == null || password == null) {
+            loading = false
+            return@LaunchedEffect
+        }
+        // Contact the api on launch to verify credentials
+        val result = loginRequest(username, password)
+        if (result == null) {
+            errorMessage = "you are offline"
+        } else if (result.getBoolean("success")) {
+            userData = result.getJSONObject("data")
+            errorMessage = null
+        } else {
+            // Clear invalid credentials
+            pref.edit().clear().apply()
+            errorMessage = result.getString("message") ?: "Login failed"
+        }
+        loading = false
+    }
+
+    when {
+        loading -> {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
             }
         }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
-    }
-
-    // Layout for centering the clock
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .pointerInput(Unit) {
-                detectHorizontalDragGestures { _, dragAmount ->
-                    // Swipe left: launch DateActivity
-                    if (dragAmount < -50f && !dateLaunched.value) {
-                        dateLaunched.value = true
-                        context.startActivity(Intent(context, DateActivity::class.java))
+        userData != null -> {
+            Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+                Text("Signed in as:")
+                Spacer(modifier = Modifier.height(16.dp))
+                val keys = userData!!.keys()
+                while (keys.hasNext()) {
+                    val key = keys.next()
+                    if (key == "profileImage") continue  // Skip profileImage
+                    Text(text = "$key: ${userData!!.get(key)}")
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+                Spacer(modifier = Modifier.weight(1f))
+                // Sign out button
+                Button(
+                    onClick = {
+                        val pref = context.getSharedPreferences("loginCache", Context.MODE_PRIVATE)
+                        pref.edit().clear().apply()
+                        userData = null
+                        errorMessage = "You are not logged in"
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Sign out")
+                }
+            }
+        }
+        else -> {
+            // Not logged in: show sign in and refresh buttons.
+            Column(
+                modifier = Modifier.fillMaxSize().padding(16.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(errorMessage ?: "You are not logged in")
+                Spacer(modifier = Modifier.height(16.dp))
+                Row {
+                    Button(
+                        onClick = {
+                            context.startActivity(android.content.Intent(context, LoginActivity::class.java))
+                        }
+                    ) {
+                        Text("Sign in")
                     }
-                    // Swipe right: launch LoginActivity
-                    else if (dragAmount > 50f && !loginLaunched.value) {
-                        loginLaunched.value = true
-                        context.startActivity(Intent(context, LoginActivity::class.java))
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Button(
+                        onClick = {
+                            loading = true
+                            refreshTrigger++  // trigger refresh
+                        }
+                    ) {
+                        Text("Refresh")
                     }
                 }
             }
-            .padding(16.dp),
-        verticalArrangement = Arrangement.SpaceBetween, // Places date at bottom
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Spacer(modifier = Modifier.weight(1.0f)) // Pushes time to center
-        Row {
-            Text(
-                text = hour,
-                fontFamily = customFont,
-                fontSize = 64.sp, // Adjust as needed
-                modifier = Modifier.align(Alignment.CenterVertically),
-                style = TextStyle(letterSpacing = 4.sp) // Optional for spacing
-            )
-            Text(
-                text = ":",
-                fontFamily = customFont,
-                fontSize = 64.sp, // Adjust as needed
-                modifier = Modifier.align(Alignment.CenterVertically),
-                style = TextStyle(letterSpacing = 4.sp) // Optional for spacing
-            )
-            Text(
-                text = displayedMinute.value,
-                fontFamily = customFont,
-                fontSize = 64.sp, // Adjust as needed
-                modifier = Modifier
-                    .align(Alignment.CenterVertically)
-                    .graphicsLayer {
-                        rotationX = minuteRotation.value
-                        alpha = if (minuteRotation.value % 360f in 90f..270f) 0f else 1f
-                    },
-                style = TextStyle(letterSpacing = 4.sp) // Optional for spacing
-            )
-            Text(
-                text = ":"+displayedSecond.value,
-                fontFamily = customFont,
-                fontSize = 64.sp, // Adjust as needed
-                modifier = Modifier
-                    .align(Alignment.CenterVertically)
-                    .graphicsLayer {
-                        rotationX = secondRotation.value
-                        alpha = if (secondRotation.value % 360f in 90f..270f) 0f else 1f
-                    },
-                style = TextStyle(letterSpacing = 4.sp) // Optional for spacing
-            )
         }
-        Spacer(modifier = Modifier.weight(1.0f)) // Pushes time to center
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewOverview() {
+    ThisIsAnAppTheme {
+        OverviewScreen()
     }
 }
 

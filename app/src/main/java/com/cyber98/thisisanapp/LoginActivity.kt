@@ -19,6 +19,8 @@ import java.io.OutputStreamWriter
 import java.net.URL
 import javax.net.ssl.HttpsURLConnection
 import kotlinx.coroutines.launch
+import android.content.Context
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 
 class LoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -51,7 +53,8 @@ fun LoginScreen() {
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
-            label = { Text("Password") }
+            label = { Text("Password") },
+            visualTransformation = PasswordVisualTransformation() // Hides password characters
         )
         Spacer(modifier = Modifier.height(16.dp))
         Button(onClick = {
@@ -61,9 +64,15 @@ fun LoginScreen() {
                     val userData = result.getJSONObject("data")
                     // Remove profileImage
                     userData.remove("profileImage")
-                    val intent = Intent(context, UserActivity::class.java)
-                    intent.putExtra("userData", userData.toString())
-                    context.startActivity(intent)
+                    // Save username and password to cache (SharedPreferences)
+                    val pref = context.getSharedPreferences("loginCache", Context.MODE_PRIVATE)
+                    pref.edit().apply {
+                        putString("username", username)
+                        putString("password", password)
+                        apply()
+                    }
+                    // Instead of launching a new activity, finish LoginActivity to return to MainActivity.
+                    (context as? ComponentActivity)?.finish()
                 } else {
                     message = result?.getString("message") ?: "Login failed"
                 }
